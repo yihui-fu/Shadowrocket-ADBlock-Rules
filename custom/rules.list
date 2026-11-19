@@ -1,3 +1,11 @@
 # 每行填写一条 Shadowrocket 分流规则，按从上到下的顺序匹配。
 # 百度网盘开屏广告测试
 DOMAIN,sdk.1rtb.net,REJECT
+
+# 网盘启动时请求的 Menta、穿山甲及微鲤广告接口
+DOMAIN,api-nxs-v4.mentamob.com,REJECT
+DOMAIN,api-v3.mentamob.com,REJECT
+DOMAIN,api-access.pangolin-sdk-toutiao.com,REJECT
+DOMAIN,api-access.pangolin-sdk-toutiao1.com,REJECT
+DOMAIN,api-access.pangolin-sdk-toutiao-b.com,REJECT
+DOMAIN,bid-adx2.vlion.cn,REJECT
