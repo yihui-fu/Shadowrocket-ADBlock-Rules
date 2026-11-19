@@ -9,3 +9,9 @@ DOMAIN,api-access.pangolin-sdk-toutiao.com,REJECT
 DOMAIN,api-access.pangolin-sdk-toutiao1.com,REJECT
 DOMAIN,api-access.pangolin-sdk-toutiao-b.com,REJECT
 DOMAIN,bid-adx2.vlion.cn,REJECT
+
+# 网盘启动时直连且被 AdGuard DNS 规则覆盖的广告主机（精确匹配）
+DOMAIN,afd.baidu.com,REJECT
+DOMAIN,sdk.e.qq.com,REJECT
+DOMAIN,sdkquic.e.qq.com,REJECT
+DOMAIN,sdk.beizi.biz,REJECT
