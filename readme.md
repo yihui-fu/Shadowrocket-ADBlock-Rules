@@ -10,7 +10,11 @@
 
 [配置下载地址](https://raw.githubusercontent.com/yihui-fu/Shadowrocket-ADBlock-Rules/release/customized.conf) · [编辑个人规则](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/edit/release/custom/rules.list) · [查看发布状态](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/actions/workflows/customized.yml)
 
-基础配置采用 [Johnshall 白名单＋去广告版](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/blob/release/sr_top500_whitelist_ad.conf)。在 `release` 分支的 `custom/rules.list` 中每行填写一条规则，生成时会插入上游 `[Rule]` 段的开头。例如，只拦截某个域名可写 `DOMAIN,ads.example.com,REJECT`。个人文件中只有注释或空行时，订阅内容与上游原文件完全一致。
+基础配置采用 [Johnshall 白名单＋去广告版](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/blob/release/sr_top500_whitelist_ad.conf)。在 `release` 分支的 `custom/rules.list` 中每行填写一条规则，生成时会插入上游 `[Rule]` 段的开头。例如，只拦截某个域名可写 `DOMAIN,ads.example.com,REJECT`。个人规则优先，其后是 Bilibili 广告域名、AdGuard 补充项以及上游的常规分流。
+
+**AdGuard DNS 补充。** 每次构建下载 [AdGuard DNS filter](https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt)，扣除已有拒绝规则及其覆盖的子域。普通域名匹配写入 [adguard-dns.list](adguard-dns.list)，主配置用带内容版本号的规则集地址引用它。涉及放行例外时，在主配置里用条件排除该匹配，让请求继续走原有分流。构建日志列出重复、例外、缩窄匹配及跳过的数量。网址、IP 字面量和正则等无法等价处理的条目不强行转为域名封锁。[格式及来源](https://github.com/AdguardTeam/AdGuardSDNSFilter) · [补充列表许可证](licenses/AdGuard-DNS-GPL-3.0.txt)
+
+**Bilibili。** [专项配置](custom/bilibili.conf) 包含四个广告域，以及固定到 [Biliverse ADBlock v0.7.5](https://github.com/Biliverse/ADBlock/releases/tag/v0.7.5) 的响应处理脚本，作用于开屏、首页推荐、短视频流和动态广告卡。更新主配置即可取得规则。要让脚本读取这些 HTTPS 接口，在当前配置的 ⓘ →「HTTPS 解密」中启用解密并确认 HTTP/2 已开启；首次使用时在本机生成、安装 CA，并在 iOS「设置 → 通用 → 关于本机 → 证书信任设置」信任它。域名拦截可独立生效。新增解密范围是专项配置列出的四个 API 主机。[Biliverse 使用说明](https://biliverse.github.io/guide/ad-block) · [广告域来源](https://github.com/letswish/Shadowrocket-Module/blob/main/All-in-One-AdBlock.sgmodule)
 
 ## 选择并导入
 
@@ -39,7 +43,7 @@
 
 **更新上游。** 先对照 [上游 `build`](https://github.com/johnshall/Shadowrocket-ADBlock-Rules-Forever/tree/build) 与本 fork 的 `build`，审查差异后再合入需要的源码和规则输入；特别留意依赖、生成脚本、输出文件名以及以后新增的自定义规则入口。不要用上游 `release` 覆盖本 fork 的 `release`，也不要让上游工作流替换本仓库的发布流程。更新后手动发布并检查提交差异。这里的定时任务只读取本 fork 的 `build`，并不会自动同步上游分支。
 
-**个人配置发布。** [Publish customized.conf](.github/workflows/customized.yml) 独立下载上游已发布的白名单去广告配置。向 `release` 提交 `custom/` 或该工作流的改动后会触发构建，每天北京时间 08:37 也会检查上游，可在 Actions 中手动运行。构建成功后只发布仓库根目录的 `customized.conf`。上游下载或合并失败时继续提供上次成功发布的版本。订阅地址和二维码都可以长期使用。
+**个人配置发布。** [Publish customized.conf](.github/workflows/customized.yml) 独立下载上游已发布的白名单去广告配置。向 `release` 提交 `custom/` 或该工作流的改动后会触发构建，每天北京时间 08:37 也会检查上游，可在 Actions 中手动运行。构建成功后，将根目录的 `customized.conf` 和 `adguard-dns.list` 放在同一提交发布。上游下载或合并失败时继续提供上次成功发布的版本。订阅地址和二维码都可以长期使用。
 
 ## 来源及许可
 

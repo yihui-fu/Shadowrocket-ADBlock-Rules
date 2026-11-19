@@ -36,12 +36,17 @@ jobs:
           curl --fail --silent --show-error --location --retry 3 --max-time 120 \
             'https://raw.githubusercontent.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/release/sr_top500_whitelist_ad.conf' \
             --output "$RUNNER_TEMP/upstream.conf"
-      - name: Merge personal rules
-        run: python3 custom/merge.py "$RUNNER_TEMP/upstream.conf" custom/rules.list customized.conf
+      - name: Download the official AdGuard DNS filter
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 \
+            'https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt' \
+            --output "$RUNNER_TEMP/adguard.txt"
+      - name: Build the subscription and matching rule-set
+        run: python3 custom/build.py "$RUNNER_TEMP/upstream.conf" "$RUNNER_TEMP/adguard.txt" generated
       - uses: actions/upload-artifact@v4
         with:
           name: customized
-          path: customized.conf
+          path: generated/
           if-no-files-found: error
           retention-days: 1
 
@@ -58,7 +63,7 @@ jobs:
         with:
           name: customized
           path: ${{ runner.temp }}/generated
-      - name: Publish only customized.conf
+      - name: Publish the configuration and rule-set together
         env:
           BUILT_FROM: ${{ needs.build.outputs.revision }}
         run: |
@@ -69,7 +74,8 @@ jobs:
           fi
           git switch --detach FETCH_HEAD
           install -m 0644 -- "$RUNNER_TEMP/generated/customized.conf" customized.conf
-          git add -- customized.conf
+          install -m 0644 -- "$RUNNER_TEMP/generated/adguard-dns.list" adguard-dns.list
+          git add -- customized.conf adguard-dns.list
           if git diff --cached --quiet; then
             echo 'customized.conf is up to date.'
             exit 0
