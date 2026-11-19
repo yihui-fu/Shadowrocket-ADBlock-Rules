@@ -2,70 +2,96 @@ name: Release Shadowrocket Rules
 
 on:
   schedule:
-    # 每日8时开始
-    - cron:  '0 23 * * *'
-  
-  push:
-    branches:
-      - build
-    paths-ignore: 
-      - '**.md'
-      - 'LICENSE'
-      
-  pull_request_target:
-    branches:
-      - build
-    paths-ignore: 
-      - '**.md'
-      - 'LICENSE'
-
+    - cron: '0 23 * * *' # 07:00 Beijing time
   workflow_dispatch:
-  
+  push:
+    branches: [release]
+    paths: ['.github/workflows/release.yml']
+
+permissions: {}
+
+env:
+  GENERATED_CONFIGS: >-
+    sr_top500_banlist_ad.conf sr_top500_banlist.conf
+    sr_top500_whitelist_ad.conf sr_top500_whitelist.conf
+    sr_adb.conf sr_direct_banad.conf sr_proxy_banad.conf
+    sr_cnip.conf sr_cnip_ad.conf sr_backcn.conf sr_backcn_ad.conf sr_ad_only.conf
+  LAZY_CONFIGS: lazy.conf lazy_group.conf
+
+concurrency:
+  group: shadowrocket-release
+  cancel-in-progress: false
+
 jobs:
-  Release:
+  build:
+    if: github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           ref: build
           path: build
+          persist-credentials: false
+      - name: Install requirements
+        run: python3 -m pip install -r build/requirements.txt
+      - name: Build rules
+        working-directory: build
+        run: bash -e ./factory/auto_build.sh
+      - name: Collect generated rules
+        run: |
+          mkdir -p generated
+          read -r -a configs <<< "$GENERATED_CONFIGS"
+          for name in "${configs[@]}"; do
+            config="build/$name"
+            [[ -f "$config" && ! -L "$config" && -s "$config" ]]
+            install -m 0644 -- "$config" generated/
+          done
+          read -r -a lazy_configs <<< "$LAZY_CONFIGS"
+          for name in "${lazy_configs[@]}"; do
+            curl --fail --silent --show-error --location --retry 3 \
+              "https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/$name" \
+              --output "generated/$name"
+            test -s "generated/$name"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-rules
+          path: generated/*.conf
+          if-no-files-found: error
+          retention-days: 1
 
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - uses: actions/checkout@v4
         with:
           ref: release
           path: release
-
-      - name: Install requirements
-        run: pip3 install -r build/requirements.txt
-
-      - name: Build Rules
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-rules
+          path: generated
+      - name: Commit and push updated rules
         run: |
-          cd build || exit 1
-          ./factory/auto_build.sh
-      
-      - name: Move files
-        run: |
-          cd build || exit 1
-          cp *.conf ../release/
-          cp -r figure ../release/
-          cp LICENSE ../release/
-          cp readme.md ../release/
-      
-      - name: Update lazy rules
-        run: |
-          cd release || exit 1
-          rm lazy.conf lazy_group.conf
-          curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy.conf
-          curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy_group.conf
-        
-      - name: Remove commits
-        run: |
-          cd release || exit 1
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git checkout --orphan latest_branch
-          git add -A
-          git commit -am "Nightly build"
-          git branch -D release
-          git branch -m release
-          git push -f origin release
+          read -r -a configs <<< "$GENERATED_CONFIGS $LAZY_CONFIGS"
+          for name in "${configs[@]}"; do
+            config="generated/$name"
+            [[ -f "$config" && ! -L "$config" && -s "$config" ]]
+            install -m 0644 -- "$config" release/
+          done
+          cd release
+          git add -- "${configs[@]}"
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'Update generated Shadowrocket rules'
+          git push origin HEAD:refs/heads/release
