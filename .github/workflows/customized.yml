@@ -1,0 +1,80 @@
+name: Publish customized.conf
+
+on:
+  schedule:
+    - cron: '37 0 * * *' # 08:37 Asia/Shanghai
+  push:
+    branches: [release]
+    paths:
+      - 'custom/**'
+      - '.github/workflows/customized.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-customized
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release
+          persist-credentials: false
+      - id: source
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Download the upstream whitelist with ad blocking
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 \
+            'https://raw.githubusercontent.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/release/sr_top500_whitelist_ad.conf' \
+            --output "$RUNNER_TEMP/upstream.conf"
+      - name: Merge personal rules
+        run: python3 custom/merge.py "$RUNNER_TEMP/upstream.conf" custom/rules.list customized.conf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: customized
+          path: customized.conf
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: customized
+          path: ${{ runner.temp }}/generated
+      - name: Publish only customized.conf
+        env:
+          BUILT_FROM: ${{ needs.build.outputs.revision }}
+        run: |
+          git fetch --no-tags --depth=1 origin refs/heads/release
+          if ! git diff --quiet "$BUILT_FROM" FETCH_HEAD -- custom/ .github/workflows/customized.yml; then
+            echo 'Inputs changed during this build. The newer run will publish them.'
+            exit 0
+          fi
+          git switch --detach FETCH_HEAD
+          install -m 0644 -- "$RUNNER_TEMP/generated/customized.conf" customized.conf
+          git add -- customized.conf
+          if git diff --cached --quiet; then
+            echo 'customized.conf is up to date.'
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'Update customized.conf'
+          git push origin HEAD:refs/heads/release

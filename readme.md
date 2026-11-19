@@ -2,6 +2,16 @@
 
 这是 [johnshall/Shadowrocket-ADBlock-Rules-Forever](https://github.com/johnshall/Shadowrocket-ADBlock-Rules-Forever) 的 fork。规则是 Shadowrocket 配置，不提供代理节点。下面的下载链接来自**这个 fork** 的 `release` 分支；[上游使用文档](https://johnshall.github.io/Shadowrocket-ADBlock-Rules-Forever/)里列的链接和二维码来自上游。
 
+## customized 个人配置
+
+用 Shadowrocket 扫描下方二维码，下载后选择「使用配置」。以后在「配置」页点 `customized.conf` →「更新配置」，即可获取已发布的上游规则和个人规则。
+
+![扫描以添加 customized.conf](figure/customized.png)
+
+[配置下载地址](https://raw.githubusercontent.com/yihui-fu/Shadowrocket-ADBlock-Rules/release/customized.conf) · [编辑个人规则](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/edit/release/custom/rules.list) · [查看发布状态](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/actions/workflows/customized.yml)
+
+基础配置采用 [Johnshall 白名单＋去广告版](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/blob/release/sr_top500_whitelist_ad.conf)。在 `release` 分支的 `custom/rules.list` 中每行填写一条规则，生成时会插入上游 `[Rule]` 段的开头。例如，只拦截某个域名可写 `DOMAIN,ads.example.com,REJECT`。个人文件中只有注释或空行时，订阅内容与上游原文件完全一致。
+
 ## 选择并导入
 
 在 Shadowrocket 的「配置」页点「+」，粘贴下表对应的链接，下载后选用。黑名单与白名单最关键的区别是**没有命中规则时怎么走**：黑名单默认直连，白名单默认代理。
@@ -29,7 +39,7 @@
 
 **更新上游。** 先对照 [上游 `build`](https://github.com/johnshall/Shadowrocket-ADBlock-Rules-Forever/tree/build) 与本 fork 的 `build`，审查差异后再合入需要的源码和规则输入；特别留意依赖、生成脚本、输出文件名以及以后新增的自定义规则入口。不要用上游 `release` 覆盖本 fork 的 `release`，也不要让上游工作流替换本仓库的发布流程。更新后手动发布并检查提交差异。这里的定时任务只读取本 fork 的 `build`，并不会自动同步上游分支。
 
-**以后加自定义规则。** 预留方案是单独维护 `build` 分支下的 `custom/`（例如 `custom/reject.list`），独立于上游同名的输入文件，再通过明确的构建入口接入。该路径及接入流程目前尚未建立。不在生成的 `release/*.conf` 中手改，也不要在更新上游时整分支覆盖掉个人文件。
+**个人配置发布。** [Publish customized.conf](.github/workflows/customized.yml) 独立下载上游已发布的白名单去广告配置。向 `release` 提交 `custom/` 或该工作流的改动后会触发构建，每天北京时间 08:37 也会检查上游，可在 Actions 中手动运行。构建成功后只发布仓库根目录的 `customized.conf`。上游下载或合并失败时继续提供上次成功发布的版本。订阅地址和二维码都可以长期使用。
 
 ## 来源及许可
 
