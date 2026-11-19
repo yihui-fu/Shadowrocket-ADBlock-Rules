@@ -1,6 +1,6 @@
 # Shadowrocket 去广告与分流规则
 
-本仓库维护一份名为 **customized** 的 Shadowrocket 订阅。它以上游的白名单去广告版为基础，加入个人规则、AdGuard 广告域名和哔哩哔哩专项规则。未匹配的流量默认走代理，代理节点需自行添加。[上游项目](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever)
+本仓库维护一份名为 **customized** 的 Shadowrocket 订阅。它以上游的白名单去广告版为基础，加入个人规则和哔哩哔哩专项规则，并用 AdGuard 公共 DNS 过滤广告域名。未匹配的流量默认走代理，代理节点需自行添加。[上游项目](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever)
 
 ## 扫码安装与更新
 
@@ -14,7 +14,7 @@
 https://raw.githubusercontent.com/yihui-fu/Shadowrocket-ADBlock-Rules/release/customized.conf
 ```
 
-以后在「配置」页点 **customized.conf → 更新配置**，就能一起获取已发布的上游分流、个人规则和 AdGuard 补充列表。首次扫码后可一直沿用这个入口。[查看发布状态](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/actions/workflows/customized.yml)
+以后在「配置」页点 **customized.conf → 更新配置**，就能一起获取最新发布的上游分流、个人规则、B 站专项和 DNS 设置。首次扫码后可一直沿用这个入口。[查看发布状态](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/actions/workflows/customized.yml)
 
 ## 添加个人规则
 
@@ -24,19 +24,17 @@ https://raw.githubusercontent.com/yihui-fu/Shadowrocket-ADBlock-Rules/release/cu
    DOMAIN-SUFFIX,ads.example.com,REJECT
    ```
 
-2. 提交后，GitHub Actions 会自动构建。等 **Publish customized.conf** 的 `publish` 步骤成功，再在手机上点「更新配置」。个人规则排在最前面，之后依次匹配 B 站广告域名、AdGuard 补充规则和上游分流。
+2. 提交后，GitHub Actions 会自动构建。等 **Publish customized.conf** 的 `publish` 步骤成功，再在手机上点「更新配置」。个人规则排在最前面，之后依次匹配 B 站广告域名和上游分流。
 
-上游更新时，工作流会重新读取 `custom/`，只写回 `customized.conf` 和 `adguard-dns.list` 两个生成文件。因此，保存在 `custom/` 的个人规则会随下次发布继续生效。
+上游更新时，工作流会重新读取 `custom/`，只写回生成的 `customized.conf`。因此，保存在 `custom/` 的个人规则会随下次发布继续生效。
 
 ## 验证去广告是否生效
 
-**确认补充列表已下载。** 主配置用一条 `RULE-SET` 引用整份 AdGuard 列表。例如主配置有 54,090 条时，同一次发布的外部列表另有 140,285 条，两处计数会随更新变化。在「配置 → customized.conf → 编辑配置 → 规则集 URL」找到 `adguard-dns.list`，✅ 表示下载成功。若显示 ❎，点该地址重试，再点「使用配置」重新编译。这份列表下载后在本机匹配，日常访问无需向 GitHub 逐次查询。[该次构建记录](https://github.com/yihui-fu/Shadowrocket-ADBlock-Rules/actions/runs/44543731398) · [Shadowrocket 使用手册](https://lowertop.github.io/Shadowrocket/)
+**检查 AdGuard DNS。** 更新并启用 `customized.conf` 后，在「配置 → 当前配置 ⓘ → 通用」查看「DNS 覆写」和「备用 DNS」。主 DNS 为 `https://dns.adguard-dns.com/dns-query`（DoH），备用为 `tls://dns.adguard-dns.com`（DoT），两者都使用 AdGuard 默认广告过滤服务。两种方式均不可达时，依赖这组 DNS 的域名可能解析失败。[AdGuard 公共 DNS 地址](https://adguard-dns.io/kb/public-dns/overview/)
 
-**确认 App 请求被拦截。** 在「数据 → 代理」启用日志记录，打开芒果 TV 刷新首页或播放免费节目，再回到最新日志搜索 `da.mgtv.com`。该域名在上述版本的补充列表里。若日志策略显示 `REJECT`，就确认这次请求被拒绝。若 App 当次没有请求该域名，这次测试就没有可供判断的记录。离线仍能显示的开屏画面也不适合用来判断网络规则是否生效。
+**区分 DNS 过滤和本地拦截。** AdGuard 在收到 DNS 查询时过滤域名，手机只需加载上游、个人和 B 站的本地规则。从旧版升级后，「规则集 URL」中应不再出现 `adguard-dns.list`。想确认具体域名用了哪个解析器，可看「数据 → DNS」的查询记录。由代理服务器远程解析的域名取决于代理端的 DNS 设置。[Shadowrocket 使用手册](https://lowertop.github.io/Shadowrocket/)
 
-### AdGuard 规则与 DNS
-
-订阅会自动把 AdGuard 可转换的域名规则补入本地规则集。使用上游默认的阿里 DNS 和 DNSPod 也能拦截这些域名，无需安装 AdGuard App。若还想让 AdGuard 过滤发给它的 DNS 查询，可在「配置 → customized.conf → ⓘ → 通用 → DNS 覆写」中只填 `https://dns.adguard-dns.com/dns-query`。同栏填多个 DNS 会并发查询，较早返回的结果可能来自其他服务商。本机修改订阅配置后，下次更新时请复核这一项。[AdGuard 公共 DNS](https://adguard-dns.io/kb/public-dns/overview/) · [Shadowrocket DNS 设置](https://lowertop.github.io/Shadowrocket/)
+**测试本地规则。** 在「数据 → 代理」开启日志记录，再打开喜马拉雅的免费节目。若日志里出现 `adse.ximalaya.com` 且策略为 `REJECT`，就说明上游的域名规则拦截了该请求。App 当次未请求该域名时，可按域名搜索其他广告请求。离线仍能显示的开屏画面也不适合用来验证网络拦截。
 
 ### 哔哩哔哩与 HTTPS 解密
 
@@ -71,9 +69,7 @@ B 站的四条广告域名规则可直接生效。开屏、首页推荐、短视
 
 **更新上游。** 先对照 [上游 `build`](https://github.com/johnshall/Shadowrocket-ADBlock-Rules-Forever/tree/build) 与本 fork 的 `build`，审查差异后再合入需要的源码和规则输入。特别留意依赖、生成脚本、输出文件名以及以后新增的自定义规则入口。不要用上游 `release` 覆盖本 fork 的 `release`，也不要让上游工作流替换本仓库的发布流程。更新后手动发布并检查提交差异。标准配置从本仓库的 `build` 分支构建，个人订阅会独立拉取上游发布文件。
 
-**个人配置发布。** [Publish customized.conf](.github/workflows/customized.yml) 在北京时间每天 08:37 计划运行。向 `release` 提交 `custom/` 或该工作流的改动也会触发构建，另可在 Actions 手动运行。它下载上游最新的白名单去广告配置和 AdGuard DNS filter，把主配置及其引用的列表放在同一提交发布。输入下载或构建失败时，订阅继续提供上次成功发布的版本。[上游基础配置](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/blob/release/sr_top500_whitelist_ad.conf) · [AdGuard 过滤器](https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt)
-
-**AdGuard 转换。** 构建时会跳过已有拒绝规则覆盖的域名，把其余可直接匹配的条目写入外部列表，并在引用地址中附上由内容计算的版本号。遇到放行例外时，主配置用条件规则排除相应域名，使其继续走后续分流。构建日志列出补充、已有覆盖、例外及跳过的数量。转换器会跳过无法等价处理的网址、IP 和正则拦截项。若遇到无法识别的放行例外，会停止构建，以免发布会误拦的规则。[转换脚本](custom/adguard.py) · [生成列表](adguard-dns.list) · [过滤器来源](https://github.com/AdguardTeam/AdGuardSDNSFilter) · [补充列表许可证](licenses/AdGuard-DNS-GPL-3.0.txt)
+**个人配置发布。** [Publish customized.conf](.github/workflows/customized.yml) 在北京时间每天 08:37 计划运行。向 `release` 提交 `custom/` 或该工作流的改动也会触发构建，另可在 Actions 手动运行。它下载上游最新的白名单去广告配置，设置 AdGuard DNS，合入 `custom/` 下的个人规则与 B 站专项后发布 `customized.conf`。输入下载或构建失败时，订阅继续提供上次成功发布的版本。[上游基础配置](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever/blob/release/sr_top500_whitelist_ad.conf) · [构建脚本](custom/build.py)
 
 ## 来源及许可
 

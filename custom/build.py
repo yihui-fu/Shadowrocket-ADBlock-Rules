@@ -1,14 +1,29 @@
-"""Assemble the customized subscription and its AdGuard rule-set."""
+"""Build the customized subscription with AdGuard DNS and Bilibili rules."""
 
-import hashlib
-import os
 import re
 import sys
 from configparser import ConfigParser
 from pathlib import Path
 
-from adguard import supplement
 from merge import merge
+
+
+def set_adguard_dns(config):
+    general = re.search(r"(?ims)^\[General\][ \t]*(\r?\n)(.*?)(?=^\[|\Z)", config)
+    if not general:
+        raise ValueError("Expected a [General] section in the upstream configuration")
+    newline, settings = general.groups()
+    settings = re.sub(
+        r"(?im)^[ \t]*(?:dns-server|fallback-dns-server)[ \t]*=[^\r\n]*(?:\r?\n|$)",
+        "",
+        settings,
+    )
+    dns = newline.join((
+        "dns-server = https://dns.adguard-dns.com/dns-query",
+        "fallback-dns-server = tls://dns.adguard-dns.com",
+        "",
+    ))
+    return config[:general.start(2)] + dns + settings + config[general.end(2):]
 
 
 def add_bilibili(config, bili):
@@ -39,7 +54,7 @@ def add_bilibili(config, bili):
     return config[:start] + body + config[end:]
 
 
-def build(upstream, adguard, output_directory):
+def build(upstream, output_directory):
     root = Path(__file__).parent
     personal = (root / "rules.list").read_text(encoding="utf-8-sig")
     # Keep routing lines verbatim; ConfigParser handles only the named script/MITM keys.
@@ -51,15 +66,9 @@ def build(upstream, adguard, output_directory):
 
     local = personal.rstrip() + "\n" + bili_rules + "\n"
     config = upstream.read_bytes().decode("utf-8")
-    upstream_rules = config.split("[Rule]", 1)[1].split("\n[", 1)[0]
-    external, guarded = supplement(adguard.read_text(encoding="utf-8"), local + upstream_rules)
-    repository = os.environ.get("GITHUB_REPOSITORY", "yihui-fu/Shadowrocket-ADBlock-Rules")
-    digest = hashlib.sha256(external.encode()).hexdigest()[:16]
-    url = f"https://raw.githubusercontent.com/{repository}/release/adguard-dns.list?v={digest}"
-    rules = local + f"RULE-SET,{url},REJECT\n" + "\n".join(guarded)
-    config = add_bilibili(merge(config, rules), bili)
+    config = set_adguard_dns(config)
+    config = add_bilibili(merge(config, local), bili)
     output_directory.mkdir(parents=True, exist_ok=True)
-    (output_directory / "adguard-dns.list").write_bytes(external.encode())
     (output_directory / "customized.conf").write_bytes(config.encode())
 
 
